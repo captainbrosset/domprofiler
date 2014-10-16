@@ -1,0 +1,12 @@
+{
+  "title": "Page Recorder",
+  "name": "pagerecorder",
+  "version": "0.0.1",
+  "description": "Devtools addon that records dom mutations and event handlings on the page",
+  "main": "index.js",
+  "author": "Patrick Brosset",
+  "engines": {
+    "firefox": ">=33.0a1"
+  },
+  "license": "MIT"
+}
