@@ -15,6 +15,8 @@ Here's a short demo video: https://www.youtube.com/watch?v=y6JSoddYQKg&feature=y
 The addon isn't on http://addons.mozilla.org/ yet, but there's an `xpi` file you can drag/drop in Firefox.
 It was developed with Firefox 35, but may work with earlier versions, although this is untested.
 
+Note that this addon will only work when using the devtools in a local browser tab, not when debugging a remote device (via the WebIDE).
+
 ## How to build and run
 
 * [install JPM](https://www.npmjs.org/package/jpm)
