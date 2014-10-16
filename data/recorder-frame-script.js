@@ -18,7 +18,6 @@ function PageChangeRecorder(doc) {
 
   this._onMutations = this._onMutations.bind(this);
   this._onEvent = this._onEvent.bind(this);
-  this._onAfterPaint = this._onAfterPaint.bind(this);
 
   // Get the mutation observer ready
   this._mutationObserver = new this.win.MutationObserver(this._onMutations);
@@ -27,7 +26,8 @@ function PageChangeRecorder(doc) {
 }
 
 PageChangeRecorder.prototype = {
-  SCREENSHOT_DEBOUNCE_TIMEOUT: 100,
+  MUTATION_SCREENSHOT_DEBOUNCE: 100,
+  REGULAR_SCREENSHOT_INTERVAL: 200,
 
   destroy() {
     this.doc = this.win = this.changes = this._mutationObserver = null;
@@ -38,11 +38,7 @@ PageChangeRecorder.prototype = {
       return;
     }
     this.isStarted = true;
-    
     this.changes = [];
-    
-    // Take a screenshot at the start
-    this._takeScreenshot();
 
     // Start observing markup mutations
     this._mutationObserver.observe(this.doc, {
@@ -61,18 +57,12 @@ PageChangeRecorder.prototype = {
         els.addSystemEventListener(node, type, this._onEvent, true);
       }
     }
-    
-    // Observe afterpaint events to capture screenshots of the page when it changes
-    content.addEventListener("MozAfterPaint", this._onAfterPaint);
   },
   
   stop() {
     if (!this.isStarted) {
       return;
     }
-    
-    // Take a screenshot at the end
-    this._takeScreenshot();
     
     this.isStarted = false;
 
@@ -83,8 +73,6 @@ PageChangeRecorder.prototype = {
     }
     this.addedListenerTypes = null;
     this._mutationObserver.disconnect();
-    
-    content.removeEventListener("MozAfterPaint", this._onAfterPaint);
     
     return this.changes;
   },
@@ -119,6 +107,11 @@ PageChangeRecorder.prototype = {
           oldValue: mutation.oldValue,
           value: mutation.target.getAttribute(mutation.attributeName)
         };
+      } else if (mutation.type === "childList") {
+        reason = {
+          addedNodes: mutation.addedNodes.length,
+          removedNodes: mutation.removedNodes.length
+        };
       }
       // XXX: add more mutation reason types
 
@@ -133,21 +126,8 @@ PageChangeRecorder.prototype = {
   _onEvent({type, target}) {
     this._addChange("event", {type, target});
   },
-  
-  _onAfterPaint(e) {
-    if (!e.clientRects.length) {
-      return;
-    }
 
-    if (this._paintDebounce) {
-      clearTimeout(this._paintDebounce);
-    }
-    this._paintDebounce = setTimeout(() => {
-      this._takeScreenshot();
-    }, this.SCREENSHOT_DEBOUNCE_TIMEOUT);
-  },
-  
-  _takeScreenshot() {
+  _getScreenshot() {
     if (!this.isStarted) {
       return;
     }
@@ -179,11 +159,18 @@ PageChangeRecorder.prototype = {
     this._screenshotCtx.canvas.height = height;
     this._screenshotCtx.drawWindow(this.win, left, top, width, height, "#fff");
     
-    this._addChange("screenshot", this._screenshotCtx.canvas.toDataURL("image/png", ""));
+    return this._screenshotCtx.canvas.toDataURL("image/png", "");
+  },
+
+  _takeScreenshot() {
+    this._addChange("screenshot", this._getScreenshot());
   },
   
   _addChange(type, data) {
-    this.changes.push({type, data, time: this.doc.defaultView.performance.now()});
+    let time = this.win.performance.now();
+    this.changes.push({type, data, time});
+    // XXX Try to take a screenshot at each change
+    this.changes.push({type: "screenshot", data: this._getScreenshot(), time});
   },
 };
 
@@ -218,9 +205,23 @@ addMessageListener("PageRecorder:Stop", function() {
   sendAsyncMessage("PageRecorder:Stop", records, nodes);
 });
 
-
-// XXX will only work with the new nsCanvasFrame-based highlighter
+// XXX will only work with the new nsCanvasFrame-based highlighter because we
+// don't have access to the browser from the frame script.
 // const highlighter = new BoxModelHighlighter({
 //   window: content
 // });
-// addMessageListener("PageRecorder:HighlightNode", function() {});
+// For now, let's use our own highlighter
+let currentHighlightedNode;
+addMessageListener("PageRecorder:HighlightNode", function({objects}) {
+  if (currentHighlightedNode) {
+    currentHighlightedNode.style.outline = "";
+  }
+  objects.node.style.outline = "2px dashed #f06";
+  currentHighlightedNode = objects.node;
+});
+
+addMessageListener("PageRecorder:UnhighlightNode", function() {
+  if (currentHighlightedNode) {
+    currentHighlightedNode.style.outline = "";
+  }
+});
