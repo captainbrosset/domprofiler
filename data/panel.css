@@ -45,7 +45,7 @@ body {
 }
 
 .devtools-searchinput {
-  border: 1px solid rgba(0,0,0,0.36);
+  border: 1px solid rgba(0,0,0,0.3);
   border-radius: 2px;
   margin: 0 3px;
   padding: 1.5px 0;
@@ -53,7 +53,7 @@ body {
   -moz-padding-end: 12px;
   width: 200px;
   box-sizing: border-box;
-  background-color: rgba(255,255,255,0.15);
+  background-color: rgba(255,255,255,0.3);
   background-image: url("chrome://browser/skin/devtools/magnifying-glass-light.png");
   background-position: 7px center;
   background-size: 11px 11px;
