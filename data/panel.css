@@ -10,8 +10,8 @@ html, body {
 }
 
 body {
-   display: flex;
-   flex-flow: column;
+  display: flex;
+  flex-flow: column;
 }
 
 .toolbar {
@@ -52,7 +52,7 @@ body {
 
 .records {
   flex-grow: 1;
-  overflow-y: scroll;
+  overflow-y: auto;
   overflow-x: hidden;
   padding: 0;
   margin: 0;
