@@ -76,10 +76,10 @@ PageRecorderPanel.prototype = {
   },
 
   search() {
-    let query = this.searchBox.value;
+    let query = this.searchBox.value.toLowerCase();
     if(!this.recordsEl.mozMatchesSelector(":empty") || !this.recordsEl.matches(":empty")) {
       [].forEach.call(this.recordsEl.querySelectorAll("li"), function(el) {
-        if(query == "" || el.textContent.indexOf(query) > -1) {
+        if(query == "" || el.textContent.toLowerCase().indexOf(query) > -1) {
           el.style.removeProperty("display");
         }
         else {
