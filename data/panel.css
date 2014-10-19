@@ -17,12 +17,13 @@ body {
 .toolbar {
   padding: 3px;
   border-bottom: 1px solid rgba(0,0,0,0.2);
+  min-height: 23px;
 }
 
 .toolbar button {
   background: rgba(0,0,0,0.2);
   border: none;
-  padding: 0 2px;
+  padding: 0 3px;
 }
 
 .toolbar button::after {
