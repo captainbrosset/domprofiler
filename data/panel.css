@@ -17,18 +17,31 @@ body {
 
 .toolbar {
   padding: 3px;
-  border-bottom: 1px solid #AAA;
+  border-bottom: 1px solid rgba(0,0,0,0.2);
 }
 
 .toolbar button {
-  background: #E2E2E2;
-  color: #18191A;
+  background: rgba(0,0,0,0.2);
   border: none;
-  padding: 3px;
+  padding: 0 2px;
 }
 
-.toolbar button:hover {
-  background: #DDD;
+.toolbar button::after {
+  content: "";
+  display: inline-block;
+  margin-top: 1px;
+  width: 16px;
+  height: 16px;
+  background-image: url("chrome://browser/skin/devtools/profiler-stopwatch.svg");
+  background-size: cover;
+}
+
+.toolbar button:not([checked]):hover {
+  background: rgba(0,0,0,0.3);
+}
+
+.toolbar button[checked]::after {
+  background-image: url("chrome://browser/skin/devtools/profiler-stopwatch-checked.svg");
 }
 
 .main {
@@ -45,12 +58,12 @@ body {
   padding: 0;
   margin: 0;
   list-style-type: none;
-  background: white;
+  background: rgba(255,255,255,0.07);
 }
 
 .screenshots {
   width: 30%;
-  border-left: 1px solid #AAA;
+  border-left: 1px solid rgba(0,0,0,0.2);
 }
 
 .screenshots img {
@@ -58,7 +71,7 @@ body {
 }
 
 .record {
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid rgba(0,0,0,0.2);
   padding: 5px 3px;
   margin: 0;
   list-style-type: none;
@@ -80,12 +93,12 @@ body {
 .target-tag {}
 
 .target-id {
-  color: #4C9ED9;
+  color: #70bf53;
   margin-left: 3px;
 }
 
 .target-classes {
-  color: rgb(207, 224, 236);
+  color: #46afe3;
   margin-left: 3px;
 }
 
@@ -97,7 +110,7 @@ body {
 
 .attribute-name {
   font-weight: bold;
-  color: #4C9ED9;
+  color: #46afe3;
 }
 
 .attribute-value {
