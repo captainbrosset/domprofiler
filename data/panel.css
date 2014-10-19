@@ -58,6 +58,7 @@ body {
   background-position: 7px center;
   background-size: 11px 11px;
   background-repeat: no-repeat;
+  background-clip: padding-box;
   font: message-box;
   float: right;
 }
