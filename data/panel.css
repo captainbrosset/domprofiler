@@ -4,9 +4,8 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-
   font-size: 3mm;
-  font-family: arial;
+  font-family: Arial, sans-serif;
   color: #18191A;
 }
 
@@ -79,10 +78,11 @@ body {
 
 .record:hover {
   background: #4C9ED9;
+  border-bottom-color: transparent;
   color: white;
 }
 
-.record.event {
+.record.event:not(:hover) {
   color: orange;
 }
 
