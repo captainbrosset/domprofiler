@@ -56,7 +56,7 @@ PageRecorderPanel.prototype = {
     }
     this.isStarted = true;
 
-    this.toggleEl.textContent = "stop";
+    this.toggleEl.setAttribute("checked", "true")
     this.recordsEl.innerHTML = "";
     this.mm.sendAsyncMessage("PageRecorder:Start");
   },
@@ -67,7 +67,7 @@ PageRecorderPanel.prototype = {
     }
     this.isStarted = false;
 
-    this.toggleEl.textContent = "start";
+    this.toggleEl.removeAttribute("checked");
     this.mm.sendAsyncMessage("PageRecorder:Stop");
   },
 
