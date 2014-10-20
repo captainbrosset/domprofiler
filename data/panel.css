@@ -44,6 +44,29 @@ body {
   background-image: url("chrome://browser/skin/devtools/profiler-stopwatch-checked.svg");
 }
 
+.devtools-searchinput {
+  border: 1px solid rgba(0,0,0,0.3);
+  border-radius: 2px;
+  margin: 0 3px;
+  padding: 1.5px 0;
+  -moz-padding-start: 22px;
+  -moz-padding-end: 12px;
+  width: 200px;
+  box-sizing: border-box;
+  background-color: rgba(255,255,255,0.3);
+  background-image: url("chrome://browser/skin/devtools/magnifying-glass-light.png");
+  background-position: 7px center;
+  background-size: 11px 11px;
+  background-repeat: no-repeat;
+  background-clip: padding-box;
+  font: message-box;
+  float: right;
+}
+
+.devtools-searchinput::-moz-placeholder {
+  font-style: italic;
+}
+
 .main {
   flex-grow: 1;
   overflow: hidden;

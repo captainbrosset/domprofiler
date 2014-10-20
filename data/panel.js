@@ -10,6 +10,7 @@ function PageRecorderPanel(win, toolbox) {
 
   this.onRecordings = this.onRecordings.bind(this);
   this.toggle = this.toggle.bind(this);
+  this.search = this.search.bind(this);
 
   this.mm = toolbox.target.tab.linkedBrowser.messageManager;
   this.loadFrameScript();
@@ -38,8 +39,10 @@ PageRecorderPanel.prototype = {
     this.recordsEl = this.doc.querySelector(".records");
     this.screenshotEl = this.doc.querySelector(".screenshots img");
     this.toggleEl = this.doc.querySelector("#toggle");
+    this.searchBox = this.doc.querySelector("#search-input");
 
     this.toggleEl.addEventListener("click", this.toggle);
+    this.searchBox.addEventListener("input", this.search);
   },
 
   toggle() {
@@ -68,7 +71,22 @@ PageRecorderPanel.prototype = {
     this.isStarted = false;
 
     this.toggleEl.removeAttribute("checked");
+    this.searchBox.value = "";
     this.mm.sendAsyncMessage("PageRecorder:Stop");
+  },
+
+  search() {
+    let query = this.searchBox.value.toLowerCase();
+    if(!this.recordsEl.mozMatchesSelector(":empty") || !this.recordsEl.matches(":empty")) {
+      [].forEach.call(this.recordsEl.querySelectorAll("li"), function(el) {
+        if(query == "" || el.textContent.toLowerCase().indexOf(query) > -1) {
+          el.style.removeProperty("display");
+        }
+        else {
+          el.style.display = "none";
+        }
+      });
+    }
   },
 
   onRecordings({data: records, objects}) {
