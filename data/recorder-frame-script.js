@@ -4,8 +4,6 @@ const {classes: Cc, interfaces: Ci, utils: Cu, results: Cr} = Components;
 const els = Cc["@mozilla.org/eventlistenerservice;1"]
           .getService(Ci.nsIEventListenerService);
 const {devtools} = Cu.import("resource://gre/modules/devtools/Loader.jsm", {});
-const {HIGHLIGHTER_CLASSES} = devtools.require("devtools/server/actors/highlighter");
-const {BoxModelHighlighter} = HIGHLIGHTER_CLASSES;
 
 /**
  * The page change recorder util itself. Doesn't care about UI, just starts and
@@ -205,12 +203,9 @@ addMessageListener("PageRecorder:Stop", function() {
   sendAsyncMessage("PageRecorder:Stop", records, nodes);
 });
 
-// XXX will only work with the new nsCanvasFrame-based highlighter because we
-// don't have access to the browser from the frame script.
-// const highlighter = new BoxModelHighlighter({
-//   window: content
-// });
-// For now, let's use our own highlighter
+// Using our own, crappy, highlighter.
+// We could require the boxmodel highlighter module here and use it but this
+// won't work in e10s, so let's wait for bug 985597 to be done first.
 let currentHighlightedNode;
 addMessageListener("PageRecorder:HighlightNode", function({objects}) {
   if (currentHighlightedNode) {
