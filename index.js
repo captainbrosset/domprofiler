@@ -7,7 +7,7 @@ const {gDevTools} = Cu.import("resource:///modules/devtools/gDevTools.jsm", {});
 
 gDevTools.registerTool({
   id: "pagerecorder",
-  icon: self.data.url("images/icon.png"),
+  icon: self.data.url("images/icon.svg"),
   invertIconForLightTheme: true,
   url: self.data.url("panel.html"),
   label: "Page Recorder",
