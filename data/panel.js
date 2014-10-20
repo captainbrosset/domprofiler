@@ -62,6 +62,7 @@ PageRecorderPanel.prototype = {
     this.toggleEl.setAttribute("checked", "true")
     this.recordsEl.innerHTML = "";
     this.searchBox.value = "";
+    this.searchBox.disabled = true;
     this.mm.sendAsyncMessage("PageRecorder:Start");
   },
 
@@ -72,6 +73,7 @@ PageRecorderPanel.prototype = {
     this.isStarted = false;
 
     this.toggleEl.removeAttribute("checked");
+    this.searchBox.removeAttribute("disabled");
     this.mm.sendAsyncMessage("PageRecorder:Stop");
   },
 
@@ -132,11 +134,6 @@ PageRecorderPanel.prototype = {
         this["buildRecordOutputFor_" + record.type](formatterData);
       } else {
         this["buildRecordOutputFor_unknown"](formatterData);
-      }
-
-      let query = this.searchBox.value.toLowerCase();
-      if (query !== "" || li.textContent.toLowerCase().indexOf(query) == -1) {
-        li.style.display = "none";
       }
 
       this.recordsEl.appendChild(li);
