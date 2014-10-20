@@ -134,10 +134,11 @@ PageRecorderPanel.prototype = {
         this["buildRecordOutputFor_unknown"](formatterData);
       }
 
+      let query = this.searchBox.value.toLowerCase();
       if (query !== "" || li.textContent.toLowerCase().indexOf(query) == -1) {
-        el.style.display = "none";
+        li.style.display = "none";
       }
-      
+
       this.recordsEl.appendChild(li);
     }
 
