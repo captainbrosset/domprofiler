@@ -8,7 +8,8 @@ function PageRecorderPanel(win, toolbox) {
   this.doc = this.win.document;
   this.toolbox = toolbox;
 
-  this.onRecordings = this.onRecordings.bind(this);
+  this.onRecord = this.onRecord.bind(this);
+  this.onScreenshot = this.onScreenshot.bind(this);
   this.toggle = this.toggle.bind(this);
   this.search = this.search.bind(this);
 
@@ -27,7 +28,8 @@ PageRecorderPanel.prototype = {
 
   loadFrameScript() {
     this.mm.loadFrameScript(FRAME_SCRIPT_URL, false);
-    this.mm.addMessageListener("PageRecorder:OnUpdate", this.onRecordings);
+    this.mm.addMessageListener("PageRecorder:OnChange", this.onRecord);
+    this.mm.addMessageListener("PageRecorder:OnScreenshot", this.onScreenshot);
 
     // Make sure this is only called once on this instance
     this.loadFrameScript = () => {
@@ -98,59 +100,55 @@ PageRecorderPanel.prototype = {
     }
   },
 
-  onRecordings({data: records, objects}) {
+  onRecord({data: record, objects: target}) {
     if (!this.isStarted) {
       return;
     }
 
-    // data and objects are 2 equally sized arrays, data contains the actual
-    // records, and objects the corresponding CPOW targets if any.
-    for (let i = 0; i < records.length; i ++) {
-      let record = records[i];
-      let target = objects[i];
+    let li = this.doc.createElement("li");
+    li.classList.add("record");
+    li.classList.add(record.type);
 
-      if (record.type === "screenshot") {
-        this.lastScreenshot = record.data;
-        continue;
-      }
+    let self = this;
+    (function(id, node) {
+      li.addEventListener("mouseover", () => {
+        // Highlight the corresponding node
+        self.mm.sendAsyncMessage("PageRecorder:HighlightNode", null, {node});
 
-      let li = this.doc.createElement("li");
-      li.classList.add("record");
-      li.classList.add(record.type);
-      let self = this;
-      (function(src, node) {
-        li.addEventListener("mouseover", () => {
-          self.screenshotEl.src = src;
-          self.mm.sendAsyncMessage("PageRecorder:HighlightNode", null, {node});
-        });
-        li.addEventListener("mouseout", () => {
-          self.mm.sendAsyncMessage("PageRecorder:UnhighlightNode");
-        });
-      })(this.lastScreenshot, target);
+        // And request the screenshot data for this step
+        self.mm.sendAsyncMessage("PageRecorder:GetScreenshot", id);
+      });
+      li.addEventListener("mouseout", () => {
+        self.mm.sendAsyncMessage("PageRecorder:UnhighlightNode");
+      });
+    })(record.id, target);
 
-      if (target) {
-        li.appendChild(this.buildTargetOutput(target));
-      }
-
-      let formatterData = {
-        parentEl: li,
-        data: record.data,
-        time: record.time
-      };
-      if (this["buildRecordOutputFor_" + record.type]) {
-        this["buildRecordOutputFor_" + record.type](formatterData);
-      } else {
-        this["buildRecordOutputFor_unknown"](formatterData);
-      }
-
-      if (!this.matchesSearchQuery(li)) {
-        li.style.display = "none";
-      }
-
-      this.recordsEl.appendChild(li);
+    if (target) {
+      li.appendChild(this.buildTargetOutput(target));
     }
 
+    let formatterData = {
+      parentEl: li,
+      data: record.data,
+      time: record.time
+    };
+    if (this["buildRecordOutputFor_" + record.type]) {
+      this["buildRecordOutputFor_" + record.type](formatterData);
+    } else {
+      this["buildRecordOutputFor_unknown"](formatterData);
+    }
+
+    if (!this.matchesSearchQuery(li)) {
+      li.style.display = "none";
+    }
+
+    this.recordsEl.appendChild(li);
+
     this.recordsEl.scrollTop = this.recordsEl.scrollHeight;
+  },
+
+  onScreenshot({data}) {
+    this.screenshotEl.src = data;
   },
 
   buildRecordOutputFor_mutation(formatterData) {

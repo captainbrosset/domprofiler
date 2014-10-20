@@ -8,12 +8,14 @@ const {on, off, emit} = devtools.require("sdk/event/core");
 
 /**
  * The page change recorder util itself. Doesn't care about UI, just starts and
- * stops a recording an returns a list of changes.
+ * stops a recording an emits records as it goes.
  */
 function PageChangeRecorder(doc) {
   this.doc = doc;
   this.win = this.doc.defaultView;
   this.isStarted = false;
+
+  this.changeID = 0;
 
   this._onMutations = this._onMutations.bind(this);
   this._onEvent = this._onEvent.bind(this);
@@ -21,7 +23,7 @@ function PageChangeRecorder(doc) {
   // Get the mutation observer ready
   this._mutationObserver = new this.win.MutationObserver(this._onMutations);
 
-  this.changes = [];
+  this.screenshots = new Map();
 }
 
 PageChangeRecorder.prototype = {
@@ -29,7 +31,8 @@ PageChangeRecorder.prototype = {
   REGULAR_SCREENSHOT_INTERVAL: 200,
 
   destroy() {
-    this.doc = this.win = this.changes = this._mutationObserver = null;
+    this.screenshots.clear();
+    this.doc = this.win = this._mutationObserver = null;
   },
 
   start() {
@@ -37,7 +40,7 @@ PageChangeRecorder.prototype = {
       return;
     }
     this.isStarted = true;
-    this.changes = [];
+    this.screenshots.clear();
 
     // Start observing markup mutations
     this._mutationObserver.observe(this.doc, {
@@ -73,8 +76,6 @@ PageChangeRecorder.prototype = {
     }
     this.addedListenerTypes = null;
     this._mutationObserver.disconnect();
-
-    return this.changes;
   },
   
   _getListeners() {
@@ -115,7 +116,7 @@ PageChangeRecorder.prototype = {
       }
       // XXX: add more mutation reason types
 
-      this._addChange("mutation", {
+      this._emitChange("mutation", {
         target: mutation.target,
         type: mutation.type,
         reason
@@ -124,7 +125,7 @@ PageChangeRecorder.prototype = {
   },
 
   _onEvent({type, target}) {
-    this._addChange("event", {type, target});
+    this._emitChange("event", {type, target});
   },
 
   _getScreenshot() {
@@ -132,91 +133,82 @@ PageChangeRecorder.prototype = {
       return;
     }
 
-    // Don't take two consecutive screenshots
-    if (this.changes.length &&
-        this.changes[this.changes.length - 1].type === "screenshot") {
-      return;
-    }
-
     if (!this._screenshotCtx) {
       let canvas = this.doc.createElement("canvas");
       this._screenshotCtx = canvas.getContext("2d");
+      this._screenshotCtx.canvas.width = this.win.innerWidth;
+      this._screenshotCtx.canvas.height = this.win.innerHeight;
     }
 
-    let left = this.win.scrollX;
-    let top = this.win.scrollY;
-    let width = this.win.innerWidth;
-    let height = this.win.innerHeight;
-
-    let winUtils = this.win.QueryInterface(Ci.nsIInterfaceRequestor)
-                           .getInterface(Ci.nsIDOMWindowUtils);
-    let scrollbarHeight = {};
-    let scrollbarWidth = {};
-    winUtils.getScrollbarSize(false, scrollbarWidth, scrollbarHeight);
-    width -= scrollbarWidth.value;
-    height -= scrollbarHeight.value;
-
-    this._screenshotCtx.canvas.width = width;
-    this._screenshotCtx.canvas.height = height;
-    this._screenshotCtx.drawWindow(this.win, left, top, width, height, "#fff");
+    this._screenshotCtx.drawWindow(this.win,
+                                   this.win.scrollX,
+                                   this.win.scrollY,
+                                   this._screenshotCtx.canvas.width,
+                                   this._screenshotCtx.canvas.height,
+                                   "#fff");
 
     return this._screenshotCtx.canvas.toDataURL("image/png", "");
   },
 
-  _takeScreenshot() {
-    this._addChange("screenshot", this._getScreenshot());
-  },
-
-  _addChange(type, data) {
+  _emitChange(type, data) {
     let time = this.win.performance.now();
-    this.changes.push({type, data, time});
-    // XXX Try to take a screenshot at each change
-    this.changes.push({type: "screenshot", data: this._getScreenshot(), time});
+    let screenshot = this._getScreenshot();
+    let id = this.changeID++;
 
-    // XXX Keeping the 'changes' array for now even though we stream records
-    // every time we get one.
-    emit(this, "records", this.changes);
-    this.changes = [];
+    this.screenshots.set(id, screenshot);
+
+    // Emit this one change over the wire, along with a unique ID so the UI
+    // can request the screenshot for this change when needed.
+    emit(this, "change", {type, data, time, id});
   },
 };
 
 let currentRecorder;
 
-function onRecorderUpdate(records) {
-  if (!currentRecorder) {
+function isRecording() {
+  return currentRecorder && currentRecorder.isStarted;
+}
+
+function onChange({type, data, time, id}) {
+  if (!isRecording()) {
     return;
   }
 
-  // We need to send DOM nodes separately so they become CPOWs, so create a
-  // second records array that has the same size but only contains DOM nodes at
-  // the expected indexes.
-  let nodes = [];
-  for (let {type, data} of records) {
-    if (data.target) {
-      nodes.push(data.target);
-      delete data.target;
-    } else {
-      nodes.push(null);
-    }
-  }
-
-  sendAsyncMessage("PageRecorder:OnUpdate", records, nodes);
+  // We need to send DOM nodes separately so they become CPOWs
+  let object = data.target;
+  delete data.target;
+  sendAsyncMessage("PageRecorder:OnChange", {type, data, time, id}, object);
 }
 
 addMessageListener("PageRecorder:Start", function() {
-  if (currentRecorder) {
+  if (isRecording()) {
     throw new Error("A recording is already in progress");
   }
+
+  if (currentRecorder) {
+    currentRecorder.destroy();
+    currentRecorder = null;
+  }
+
   currentRecorder = new PageChangeRecorder(content.document);
-  on(currentRecorder, "records", onRecorderUpdate);
+  on(currentRecorder, "change", onChange);
   currentRecorder.start();
 });
 
 addMessageListener("PageRecorder:Stop", function() {
   let records = currentRecorder.stop();
-  off(currentRecorder, "records", onRecorderUpdate);
-  currentRecorder.destroy();
-  currentRecorder = null;
+  off(currentRecorder, "change", onChange);
+});
+
+addMessageListener("PageRecorder:GetScreenshot", function({data: id}) {
+  if (!currentRecorder) {
+    throw new Error("No recorder available");
+  }
+
+  let screenshot = currentRecorder.screenshots.get(id);
+  if (screenshot) {
+    sendAsyncMessage("PageRecorder:OnScreenshot", screenshot);
+  }
 });
 
 // Using our own, crappy, highlighter.
@@ -226,7 +218,7 @@ let currentHighlightedNode;
 addMessageListener("PageRecorder:HighlightNode", function({objects}) {
   // XXX the outline-based highlighter triggers mutations if used during the
   // recording. So just don't.
-  if (currentRecorder) {
+  if (isRecording()) {
     return;
   }
 
@@ -240,7 +232,7 @@ addMessageListener("PageRecorder:HighlightNode", function({objects}) {
 addMessageListener("PageRecorder:UnhighlightNode", function() {
   // XXX the outline-based highlighter triggers mutations if used during the
   // recording. So just don't.
-  if (currentRecorder) {
+  if (isRecording()) {
     return;
   }
 
