@@ -2,7 +2,7 @@
 
 const {classes: Cc, interfaces: Ci, utils: Cu, results: Cr} = Components;
 const els = Cc["@mozilla.org/eventlistenerservice;1"]
-          .getService(Ci.nsIEventListenerService);
+            .getService(Ci.nsIEventListenerService);
 const {devtools} = Cu.import("resource://gre/modules/devtools/Loader.jsm", {});
 const {on, off, emit} = devtools.require("sdk/event/core");
 
@@ -46,12 +46,13 @@ PageChangeRecorder.prototype = {
       childList: true,
       subtree: true
     });
-    
+
     // Start observing DOM events that have listeners
     this.addedListeners = this._getListeners();
     for (let [node, listeners] of this.addedListeners) {
       // Add one system-group event listener per default event type found
-      // so we can be called whenever one happens even if the handler prevents propagation.
+      // so we can be called whenever one happens even if the handler prevents
+      // propagation.
       for (let {type} of listeners) {
         els.addSystemEventListener(node, type, this._onEvent, true);
       }
@@ -62,7 +63,7 @@ PageChangeRecorder.prototype = {
     if (!this.isStarted) {
       return;
     }
-    
+
     this.isStarted = false;
 
     for (let [node, listeners] of this.addedListeners) {
@@ -72,7 +73,7 @@ PageChangeRecorder.prototype = {
     }
     this.addedListenerTypes = null;
     this._mutationObserver.disconnect();
-    
+
     return this.changes;
   },
   
@@ -91,12 +92,12 @@ PageChangeRecorder.prototype = {
     }
     return nodeEventListeners;
   },
-  
+
   _onMutations(mutations) {
     if (!this.isStarted) {
       return;
     }
-    
+
     for (let mutation of mutations) {
       // Build a reason object that will let the user know what exactly happened
       let reason = mutation;
@@ -130,9 +131,10 @@ PageChangeRecorder.prototype = {
     if (!this.isStarted) {
       return;
     }
-    
+
     // Don't take two consecutive screenshots
-    if (this.changes.length && this.changes[this.changes.length - 1].type === "screenshot") {
+    if (this.changes.length &&
+        this.changes[this.changes.length - 1].type === "screenshot") {
       return;
     }
 
@@ -147,7 +149,7 @@ PageChangeRecorder.prototype = {
     let height = this.win.innerHeight;
 
     let winUtils = this.win.QueryInterface(Ci.nsIInterfaceRequestor)
-                      .getInterface(Ci.nsIDOMWindowUtils);
+                           .getInterface(Ci.nsIDOMWindowUtils);
     let scrollbarHeight = {};
     let scrollbarWidth = {};
     winUtils.getScrollbarSize(false, scrollbarWidth, scrollbarHeight);
@@ -157,14 +159,14 @@ PageChangeRecorder.prototype = {
     this._screenshotCtx.canvas.width = width;
     this._screenshotCtx.canvas.height = height;
     this._screenshotCtx.drawWindow(this.win, left, top, width, height, "#fff");
-    
+
     return this._screenshotCtx.canvas.toDataURL("image/png", "");
   },
 
   _takeScreenshot() {
     this._addChange("screenshot", this._getScreenshot());
   },
-  
+
   _addChange(type, data) {
     let time = this.win.performance.now();
     this.changes.push({type, data, time});

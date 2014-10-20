@@ -61,8 +61,6 @@ PageRecorderPanel.prototype = {
 
     this.toggleEl.setAttribute("checked", "true")
     this.recordsEl.innerHTML = "";
-    this.searchBoxEl.value = "";
-    this.searchBoxEl.disabled = true;
     this.mm.sendAsyncMessage("PageRecorder:Start");
   },
 
@@ -77,14 +75,22 @@ PageRecorderPanel.prototype = {
     this.mm.sendAsyncMessage("PageRecorder:Stop");
   },
 
-  search() {
+  matchesSearchQuery(recordEl) {
     let query = this.searchBoxEl.value.toLowerCase();
-    if (query === "" || !this.recordsEl.children.length) {
+    if (query === "") {
+      return true;
+    }
+
+    return recordEl.textContent.toLowerCase().indexOf(query) > -1;
+  },
+
+  search() {
+    if (!this.recordsEl.children.length) {
       return;
     }
 
     for (let el of this.recordsEl.querySelectorAll("li")) {
-      if(el.textContent.toLowerCase().indexOf(query) > -1) {
+      if (this.matchesSearchQuery(el)) {
         el.style.removeProperty("display");
       } else {
         el.style.display = "none";
@@ -135,6 +141,10 @@ PageRecorderPanel.prototype = {
         this["buildRecordOutputFor_" + record.type](formatterData);
       } else {
         this["buildRecordOutputFor_unknown"](formatterData);
+      }
+
+      if (!this.matchesSearchQuery(li)) {
+        li.style.display = "none";
       }
 
       this.recordsEl.appendChild(li);

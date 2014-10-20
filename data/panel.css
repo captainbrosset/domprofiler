@@ -118,7 +118,9 @@ body {
   float: right;
 }
 
-.target-tag {}
+.target-tag {
+  color: black;
+}
 
 .target-id {
   color: #70bf53;
