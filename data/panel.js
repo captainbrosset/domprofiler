@@ -39,10 +39,10 @@ PageRecorderPanel.prototype = {
     this.recordsEl = this.doc.querySelector(".records");
     this.screenshotEl = this.doc.querySelector(".screenshots img");
     this.toggleEl = this.doc.querySelector("#toggle");
-    this.searchBox = this.doc.querySelector("#search-input");
+    this.searchBoxEl = this.doc.querySelector("#search-input");
 
     this.toggleEl.addEventListener("click", this.toggle);
-    this.searchBox.addEventListener("input", this.search);
+    this.searchBoxEl.addEventListener("input", this.search);
   },
 
   toggle() {
@@ -61,8 +61,8 @@ PageRecorderPanel.prototype = {
 
     this.toggleEl.setAttribute("checked", "true")
     this.recordsEl.innerHTML = "";
-    this.searchBox.value = "";
-    this.searchBox.disabled = true;
+    this.searchBoxEl.value = "";
+    this.searchBoxEl.disabled = true;
     this.mm.sendAsyncMessage("PageRecorder:Start");
   },
 
@@ -73,21 +73,22 @@ PageRecorderPanel.prototype = {
     this.isStarted = false;
 
     this.toggleEl.removeAttribute("checked");
-    this.searchBox.removeAttribute("disabled");
+    this.searchBoxEl.removeAttribute("disabled");
     this.mm.sendAsyncMessage("PageRecorder:Stop");
   },
 
   search() {
-    let query = this.searchBox.value.toLowerCase();
-    if(!this.recordsEl.mozMatchesSelector(":empty") || !this.recordsEl.matches(":empty")) {
-      [].forEach.call(this.recordsEl.querySelectorAll("li"), function(el) {
-        if(query == "" || el.textContent.toLowerCase().indexOf(query) > -1) {
-          el.style.removeProperty("display");
-        }
-        else {
-          el.style.display = "none";
-        }
-      });
+    let query = this.searchBoxEl.value.toLowerCase();
+    if (query === "" || !this.recordsEl.children.length) {
+      return;
+    }
+
+    for (let el of this.recordsEl.querySelectorAll("li")) {
+      if(el.textContent.toLowerCase().indexOf(query) > -1) {
+        el.style.removeProperty("display");
+      } else {
+        el.style.display = "none";
+      }
     }
   },
 
