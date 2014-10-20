@@ -134,6 +134,10 @@ PageRecorderPanel.prototype = {
         this["buildRecordOutputFor_unknown"](formatterData);
       }
 
+      if (query !== "" || li.textContent.toLowerCase().indexOf(query) == -1) {
+        el.style.display = "none";
+      }
+      
       this.recordsEl.appendChild(li);
     }
 
