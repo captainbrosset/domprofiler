@@ -62,8 +62,13 @@ body {
   font: message-box;
   float: right;
 }
+
 .devtools-searchinput::-moz-placeholder {
   font-style: italic;
+}
+
+.devtools-searchinput:disabled {
+  opacity: 0.5;
 }
 
 .main {
