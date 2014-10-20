@@ -26,7 +26,7 @@ PageRecorderPanel.prototype = {
 
   loadFrameScript() {
     this.mm.loadFrameScript(FRAME_SCRIPT_URL, false);
-    this.mm.addMessageListener("PageRecorder:Stop", this.onRecordings);
+    this.mm.addMessageListener("PageRecorder:OnUpdate", this.onRecordings);
 
     // Make sure this is only called once on this instance
     this.loadFrameScript = () => {
@@ -72,15 +72,18 @@ PageRecorderPanel.prototype = {
   },
 
   onRecordings({data: records, objects}) {
+    if (!this.isStarted) {
+      return;
+    }
+
     // data and objects are 2 equally sized arrays, data contains the actual
     // records, and objects the corresponding CPOW targets if any.
-    let lastScreenshot;
     for (let i = 0; i < records.length; i ++) {
       let record = records[i];
       let target = objects[i];
 
       if (record.type === "screenshot") {
-        lastScreenshot = record.data;
+        this.lastScreenshot = record.data;
         continue;
       }
 
@@ -96,7 +99,7 @@ PageRecorderPanel.prototype = {
         li.addEventListener("mouseout", () => {
           self.mm.sendAsyncMessage("PageRecorder:UnhighlightNode");
         });
-      })(lastScreenshot, target);
+      })(this.lastScreenshot, target);
 
       if (target) {
         li.appendChild(this.buildTargetOutput(target));
@@ -115,6 +118,8 @@ PageRecorderPanel.prototype = {
 
       this.recordsEl.appendChild(li);
     }
+
+    this.recordsEl.scrollTop = this.recordsEl.scrollHeight;
   },
 
   buildRecordOutputFor_mutation(formatterData) {

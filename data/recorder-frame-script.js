@@ -4,6 +4,7 @@ const {classes: Cc, interfaces: Ci, utils: Cu, results: Cr} = Components;
 const els = Cc["@mozilla.org/eventlistenerservice;1"]
           .getService(Ci.nsIEventListenerService);
 const {devtools} = Cu.import("resource://gre/modules/devtools/Loader.jsm", {});
+const {on, off, emit} = devtools.require("sdk/event/core");
 
 /**
  * The page change recorder util itself. Doesn't care about UI, just starts and
@@ -169,23 +170,20 @@ PageChangeRecorder.prototype = {
     this.changes.push({type, data, time});
     // XXX Try to take a screenshot at each change
     this.changes.push({type: "screenshot", data: this._getScreenshot(), time});
+
+    // XXX Keeping the 'changes' array for now even though we stream records
+    // every time we get one.
+    emit(this, "records", this.changes);
+    this.changes = [];
   },
 };
 
 let currentRecorder;
 
-addMessageListener("PageRecorder:Start", function() {
-  if (currentRecorder) {
-    throw new Error("A recording is already in progress");
+function onRecorderUpdate(records) {
+  if (!currentRecorder) {
+    return;
   }
-  currentRecorder = new PageChangeRecorder(content.document);
-  currentRecorder.start();
-});
-
-addMessageListener("PageRecorder:Stop", function() {
-  let records = currentRecorder.stop();
-  currentRecorder.destroy();
-  currentRecorder = null;
 
   // We need to send DOM nodes separately so they become CPOWs, so create a
   // second records array that has the same size but only contains DOM nodes at
@@ -200,7 +198,23 @@ addMessageListener("PageRecorder:Stop", function() {
     }
   }
 
-  sendAsyncMessage("PageRecorder:Stop", records, nodes);
+  sendAsyncMessage("PageRecorder:OnUpdate", records, nodes);
+}
+
+addMessageListener("PageRecorder:Start", function() {
+  if (currentRecorder) {
+    throw new Error("A recording is already in progress");
+  }
+  currentRecorder = new PageChangeRecorder(content.document);
+  on(currentRecorder, "records", onRecorderUpdate);
+  currentRecorder.start();
+});
+
+addMessageListener("PageRecorder:Stop", function() {
+  let records = currentRecorder.stop();
+  off(currentRecorder, "records", onRecorderUpdate);
+  currentRecorder.destroy();
+  currentRecorder = null;
 });
 
 // Using our own, crappy, highlighter.
@@ -208,6 +222,12 @@ addMessageListener("PageRecorder:Stop", function() {
 // won't work in e10s, so let's wait for bug 985597 to be done first.
 let currentHighlightedNode;
 addMessageListener("PageRecorder:HighlightNode", function({objects}) {
+  // XXX the outline-based highlighter triggers mutations if used during the
+  // recording. So just don't.
+  if (currentRecorder) {
+    return;
+  }
+
   if (currentHighlightedNode) {
     currentHighlightedNode.style.outline = "";
   }
@@ -216,6 +236,12 @@ addMessageListener("PageRecorder:HighlightNode", function({objects}) {
 });
 
 addMessageListener("PageRecorder:UnhighlightNode", function() {
+  // XXX the outline-based highlighter triggers mutations if used during the
+  // recording. So just don't.
+  if (currentRecorder) {
+    return;
+  }
+
   if (currentHighlightedNode) {
     currentHighlightedNode.style.outline = "";
   }
