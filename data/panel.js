@@ -73,7 +73,6 @@ PageRecorderPanel.prototype = {
     this.isStarted = false;
 
     this.toggleEl.removeAttribute("checked");
-    this.searchBoxEl.removeAttribute("disabled");
     this.mm.sendAsyncMessage("PageRecorder:Stop");
   },
 
