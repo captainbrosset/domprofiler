@@ -12,7 +12,6 @@ function PageRecorderPanel(win, toolbox) {
   this.toolbox = toolbox;
 
   this.onRecord = this.onRecord.bind(this);
-  this.onScreenshot = this.onScreenshot.bind(this);
   this.toggle = this.toggle.bind(this);
   this.search = this.search.bind(this);
 
@@ -32,7 +31,6 @@ PageRecorderPanel.prototype = {
   loadFrameScript() {
     this.mm.loadFrameScript(FRAME_SCRIPT_URL, false);
     this.mm.addMessageListener("PageRecorder:OnChange", this.onRecord);
-    this.mm.addMessageListener("PageRecorder:OnScreenshot", this.onScreenshot);
 
     // Make sure this is only called once on this instance
     this.loadFrameScript = () => {
@@ -42,7 +40,6 @@ PageRecorderPanel.prototype = {
 
   initUI() {
     this.recordsEl = this.doc.querySelector(".records");
-    this.screenshotEl = this.doc.querySelector(".screenshots img");
     this.toggleEl = this.doc.querySelector("#toggle");
     this.searchBoxEl = this.doc.querySelector("#search-input");
 
@@ -113,13 +110,9 @@ PageRecorderPanel.prototype = {
     li.classList.add(record.type);
 
     let self = this;
-    (function(id, node) {
+    (function(node) {
       li.addEventListener("mouseover", () => {
-        // Highlight the corresponding node
         self.highlightNode(node);
-
-        // And request the screenshot data for this step
-        self.mm.sendAsyncMessage("PageRecorder:GetScreenshot", id);
       });
       li.addEventListener("mouseout", () => {
         self.unhighlight();
@@ -127,7 +120,9 @@ PageRecorderPanel.prototype = {
       li.addEventListener("click", () => {
         self.inspectNode(node);
       });
-    })(record.id, target);
+    })(target);
+
+    li.appendChild(this.buildTimeOutput(record.time));
 
     if (target) {
       li.appendChild(this.buildTargetOutput(target));
@@ -154,6 +149,10 @@ PageRecorderPanel.prototype = {
   },
 
   getNodeFront: Task.async(function*(node) {
+    if (!node || Cu.isDeadWrapper(node)) {
+      return null;
+    }
+
     // Set, via the frame-script, the provided node as the "inspecting node" on
     // the inspector module. This way we can later retrieve it via the walker
     // actor.
@@ -168,6 +167,9 @@ PageRecorderPanel.prototype = {
 
   inspectNode: Task.async(function*(node) {
     let nodeFront = yield this.getNodeFront(node);
+    if (!nodeFront) {
+      return;
+    }
 
     let panel = yield this.toolbox.selectTool("inspector");
     panel.selection.setNodeFront(nodeFront);
@@ -175,16 +177,16 @@ PageRecorderPanel.prototype = {
 
   highlightNode: Task.async(function*(node) {
     let nodeFront = yield this.getNodeFront(node);
+    if (!nodeFront) {
+      return;
+    }
+
     yield this.toolbox.highlighterUtils.highlightNodeFront(nodeFront);
   }),
 
   unhighlight: Task.async(function*() {
     yield this.toolbox.highlighterUtils.unhighlight();
   }),
-
-  onScreenshot({data}) {
-    this.screenshotEl.src = data;
-  },
 
   buildRecordOutputFor_mutation(formatterData) {
     // Break it down further by mutation type
@@ -256,5 +258,15 @@ PageRecorderPanel.prototype = {
     targetEl.appendChild(closeTagEl);
 
     return targetEl;
+  },
+
+  buildTimeOutput(time) {
+    time = Math.round(time / 1000 * 100) / 100;
+
+    let timeEl = this.doc.createElement("span");
+    timeEl.classList.add("time");
+    timeEl.textContent = time + " sec";
+
+    return timeEl;
   }
 };

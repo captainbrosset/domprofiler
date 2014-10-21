@@ -15,23 +15,17 @@ function PageChangeRecorder(doc) {
   this.win = this.doc.defaultView;
   this.isStarted = false;
 
-  this.changeID = 0;
+  this.id = 0;
 
   this._onMutations = this._onMutations.bind(this);
   this._onEvent = this._onEvent.bind(this);
 
   // Get the mutation observer ready
   this._mutationObserver = new this.win.MutationObserver(this._onMutations);
-
-  this.screenshots = new Map();
 }
 
 PageChangeRecorder.prototype = {
-  MUTATION_SCREENSHOT_DEBOUNCE: 100,
-  REGULAR_SCREENSHOT_INTERVAL: 200,
-
   destroy() {
-    this.screenshots.clear();
     this.doc = this.win = this._mutationObserver = null;
   },
 
@@ -40,7 +34,7 @@ PageChangeRecorder.prototype = {
       return;
     }
     this.isStarted = true;
-    this.screenshots.clear();
+    this.startTime = this.win.performance.now();
 
     // Start observing markup mutations
     this._mutationObserver.observe(this.doc, {
@@ -128,38 +122,10 @@ PageChangeRecorder.prototype = {
     this._emitChange("event", {type, target});
   },
 
-  _getScreenshot() {
-    if (!this.isStarted) {
-      return;
-    }
-
-    if (!this._screenshotCtx) {
-      let canvas = this.doc.createElement("canvas");
-      this._screenshotCtx = canvas.getContext("2d");
-      this._screenshotCtx.canvas.width = this.win.innerWidth;
-      this._screenshotCtx.canvas.height = this.win.innerHeight;
-    }
-
-    this._screenshotCtx.drawWindow(this.win,
-                                   this.win.scrollX,
-                                   this.win.scrollY,
-                                   this._screenshotCtx.canvas.width,
-                                   this._screenshotCtx.canvas.height,
-                                   "#fff");
-
-    return this._screenshotCtx.canvas.toDataURL("image/png", "");
-  },
-
   _emitChange(type, data) {
     let time = this.win.performance.now();
-    let screenshot = this._getScreenshot();
-    let id = this.changeID++;
-
-    this.screenshots.set(id, screenshot);
-
-    // Emit this one change over the wire, along with a unique ID so the UI
-    // can request the screenshot for this change when needed.
-    emit(this, "change", {type, data, time, id});
+    time -= this.startTime;
+    emit(this, "change", {type, data, time, id: this.id++});
   },
 };
 
@@ -198,17 +164,6 @@ addMessageListener("PageRecorder:Start", function() {
 addMessageListener("PageRecorder:Stop", function() {
   let records = currentRecorder.stop();
   off(currentRecorder, "change", onChange);
-});
-
-addMessageListener("PageRecorder:GetScreenshot", function({data: id}) {
-  if (!currentRecorder) {
-    throw new Error("No recorder available");
-  }
-
-  let screenshot = currentRecorder.screenshots.get(id);
-  if (screenshot) {
-    sendAsyncMessage("PageRecorder:OnScreenshot", screenshot);
-  }
 });
 
 addMessageListener("PageRecorder:SetInspectingNode", function({objects}) {
