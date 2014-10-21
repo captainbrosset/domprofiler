@@ -1,6 +1,9 @@
 "use strict";
 
+const {Cu} = require("chrome");
 const self = require("sdk/self");
+const {Task} = Cu.import("resource://gre/modules/Task.jsm", {});
+
 const FRAME_SCRIPT_URL = self.data.url("recorder-frame-script.js");
 
 function PageRecorderPanel(win, toolbox) {
@@ -113,13 +116,16 @@ PageRecorderPanel.prototype = {
     (function(id, node) {
       li.addEventListener("mouseover", () => {
         // Highlight the corresponding node
-        self.mm.sendAsyncMessage("PageRecorder:HighlightNode", null, {node});
+        self.highlightNode(node);
 
         // And request the screenshot data for this step
         self.mm.sendAsyncMessage("PageRecorder:GetScreenshot", id);
       });
       li.addEventListener("mouseout", () => {
-        self.mm.sendAsyncMessage("PageRecorder:UnhighlightNode");
+        self.unhighlight();
+      });
+      li.addEventListener("click", () => {
+        self.inspectNode(node);
       });
     })(record.id, target);
 
@@ -146,6 +152,35 @@ PageRecorderPanel.prototype = {
 
     this.recordsEl.scrollTop = this.recordsEl.scrollHeight;
   },
+
+  getNodeFront: Task.async(function*(node) {
+    // Set, via the frame-script, the provided node as the "inspecting node" on
+    // the inspector module. This way we can later retrieve it via the walker
+    // actor.
+    this.mm.sendAsyncMessage("PageRecorder:SetInspectingNode", null, {node});
+
+    // Make sure the inspector/waler/highlighter actors are ready
+    yield this.toolbox.initInspector();
+
+    // Retrieve the node front from the walker
+    return this.toolbox.walker.findInspectingNode();
+  }),
+
+  inspectNode: Task.async(function*(node) {
+    let nodeFront = yield this.getNodeFront(node);
+
+    let panel = yield this.toolbox.selectTool("inspector");
+    panel.selection.setNodeFront(nodeFront);
+  }),
+
+  highlightNode: Task.async(function*(node) {
+    let nodeFront = yield this.getNodeFront(node);
+    yield this.toolbox.highlighterUtils.highlightNodeFront(nodeFront);
+  }),
+
+  unhighlight: Task.async(function*() {
+    yield this.toolbox.highlighterUtils.unhighlight();
+  }),
 
   onScreenshot({data}) {
     this.screenshotEl.src = data;

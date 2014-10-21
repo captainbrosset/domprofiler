@@ -211,32 +211,7 @@ addMessageListener("PageRecorder:GetScreenshot", function({data: id}) {
   }
 });
 
-// Using our own, crappy, highlighter.
-// We could require the boxmodel highlighter module here and use it but this
-// won't work in e10s, so let's wait for bug 985597 to be done first.
-let currentHighlightedNode;
-addMessageListener("PageRecorder:HighlightNode", function({objects}) {
-  // XXX the outline-based highlighter triggers mutations if used during the
-  // recording. So just don't.
-  if (isRecording()) {
-    return;
-  }
-
-  if (currentHighlightedNode) {
-    currentHighlightedNode.style.outline = "";
-  }
-  objects.node.style.outline = "2px dashed #f06";
-  currentHighlightedNode = objects.node;
-});
-
-addMessageListener("PageRecorder:UnhighlightNode", function() {
-  // XXX the outline-based highlighter triggers mutations if used during the
-  // recording. So just don't.
-  if (isRecording()) {
-    return;
-  }
-
-  if (currentHighlightedNode) {
-    currentHighlightedNode.style.outline = "";
-  }
+addMessageListener("PageRecorder:SetInspectingNode", function({objects}) {
+  let inspector = devtools.require("devtools/server/actors/inspector");
+  inspector.setInspectingNode(objects.node);
 });
