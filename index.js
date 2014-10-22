@@ -2,7 +2,7 @@
 
 const {Cu} = require("chrome");
 const self = require("sdk/self");
-const {PageRecorderPanel} = require("data/panel");
+const {RecorderPanel} = require("data/panel");
 const {gDevTools} = Cu.import("resource:///modules/devtools/gDevTools.jsm", {});
 
 gDevTools.registerTool({
@@ -19,6 +19,6 @@ gDevTools.registerTool({
   },
 
   build(iframeWindow, toolbox) {
-    return new PageRecorderPanel(iframeWindow, toolbox);
+    return new RecorderPanel(iframeWindow, toolbox);
   }
 });

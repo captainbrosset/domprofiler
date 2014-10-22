@@ -2,40 +2,96 @@
 
 const {Cu} = require("chrome");
 const self = require("sdk/self");
+const {on, off, emit} = require("sdk/event/core");
 const {Task} = Cu.import("resource://gre/modules/Task.jsm", {});
 
 const FRAME_SCRIPT_URL = self.data.url("recorder-frame-script.js");
 
-function PageRecorderPanel(win, toolbox) {
+/**
+ * The RecorderController is responsible for toggling the recording in the
+ * content process and getting the data.
+ * It also manages a list of past recordings and allows to get them as
+ * stringified json for exporting.
+ */
+function RecorderController(toolbox) {
+  this.mm = toolbox.target.tab.linkedBrowser.messageManager;
+  this.mm.loadFrameScript(FRAME_SCRIPT_URL, false);
+
+  this.onRecord = this.onRecord.bind(this);
+  this.mm.addMessageListener("PageRecorder:OnChange", this.onRecord);
+
+  this.sessions = [];
+}
+
+RecorderController.prototype = {
+  createNewSession() {
+    this.sessions.push({
+      time: Date.now(),
+      records: [],
+      duration: null
+    });
+  },
+
+  get lastSession() {
+    return this.sessions[this.sessions.length - 1];
+  },
+
+  start() {
+    if (this.isStarted) {
+      return;
+    }
+    this.isStarted = true;
+
+    this.createNewSession();
+    this.mm.sendAsyncMessage("PageRecorder:Start");
+
+    return this.lastSession;
+  },
+
+  stop() {
+    if (!this.isStarted) {
+      return;
+    }
+    this.isStarted = false;
+
+    this.mm.sendAsyncMessage("PageRecorder:Stop");
+    this.lastSession.duration = Date.now() - this.lastSession.time;
+
+    return this.lastSession;
+  },
+
+  onRecord(msg) {
+    if (!this.isStarted) {
+      return;
+    }
+
+    this.lastSession.records.push(msg);
+    emit(this, "record", msg);
+  }
+};
+
+/**
+ * The RecorderPanel is responsible for the UI of the tool.
+ */
+function RecorderPanel(win, toolbox) {
+  this.controller = new RecorderController(toolbox);
+
   this.win = win;
   this.doc = this.win.document;
   this.toolbox = toolbox;
 
-  this.onRecord = this.onRecord.bind(this);
   this.toggle = this.toggle.bind(this);
+  this.onRecord = this.onRecord.bind(this);
   this.search = this.search.bind(this);
-
-  this.mm = toolbox.target.tab.linkedBrowser.messageManager;
-  this.loadFrameScript();
 
   this.initUI();
 }
 
-exports.PageRecorderPanel = PageRecorderPanel;
+exports.RecorderPanel = RecorderPanel;
 
-PageRecorderPanel.prototype = {
+RecorderPanel.prototype = {
   destroy() {
     this.win = this.doc = this.toolbox = this.mm = null;
-  },
-
-  loadFrameScript() {
-    this.mm.loadFrameScript(FRAME_SCRIPT_URL, false);
-    this.mm.addMessageListener("PageRecorder:OnChange", this.onRecord);
-
-    // Make sure this is only called once on this instance
-    this.loadFrameScript = () => {
-      console.warn("Frame script " + FRAME_SCRIPT_URL + " has already been loaded");
-    };
   },
 
   initUI() {
@@ -48,32 +104,16 @@ PageRecorderPanel.prototype = {
   },
 
   toggle() {
-    if (!this.isStarted) {
-      this.start();
+    if (!this.controller.isStarted) {
+      this.toggleEl.setAttribute("checked", "true")
+      this.recordsEl.innerHTML = "";
+      this.controller.start();
+      on(this.controller, "record", this.onRecord);
     } else {
-      this.stop();
+      this.toggleEl.removeAttribute("checked");
+      off(this.controller, "record", this.onRecord);
+      this.controller.stop();
     }
-  },
-
-  start() {
-    if (this.isStarted) {
-      return;
-    }
-    this.isStarted = true;
-
-    this.toggleEl.setAttribute("checked", "true")
-    this.recordsEl.innerHTML = "";
-    this.mm.sendAsyncMessage("PageRecorder:Start");
-  },
-
-  stop() {
-    if (!this.isStarted) {
-      return;
-    }
-    this.isStarted = false;
-
-    this.toggleEl.removeAttribute("checked");
-    this.mm.sendAsyncMessage("PageRecorder:Stop");
   },
 
   matchesSearchQuery(recordEl) {
@@ -100,31 +140,28 @@ PageRecorderPanel.prototype = {
   },
 
   onRecord({data: record, objects: target}) {
-    if (!this.isStarted) {
-      return;
-    }
-
     let li = this.doc.createElement("li");
     li.classList.add("record");
     li.classList.add(record.type);
 
-    let self = this;
-    (function(node) {
-      li.addEventListener("mouseover", () => {
-        self.highlightNode(node);
-      });
-      li.addEventListener("mouseout", () => {
-        self.unhighlight();
-      });
-      li.addEventListener("click", () => {
-        self.inspectNode(node);
-      });
-    })(target);
-
     li.appendChild(this.buildTimeOutput(record.time));
 
     if (target) {
-      li.appendChild(this.buildTargetOutput(target));
+      let targetEl = this.buildTargetOutput(target);
+      li.appendChild(targetEl);
+      // Adding mouse interaction to the target
+      let self = this;
+      (function(node) {
+        targetEl.addEventListener("mouseover", () => {
+          self.highlightNode(node);
+        });
+        targetEl.addEventListener("mouseout", () => {
+          self.unhighlight();
+        });
+        targetEl.addEventListener("click", () => {
+          self.inspectNode(node);
+        });
+      })(target);
     }
 
     let formatterData = {
@@ -155,7 +192,8 @@ PageRecorderPanel.prototype = {
     // Set, via the frame-script, the provided node as the "inspecting node" on
     // the inspector module. This way we can later retrieve it via the walker
     // actor.
-    this.mm.sendAsyncMessage("PageRecorder:SetInspectingNode", null, {node});
+    this.controller.mm.sendAsyncMessage("PageRecorder:SetInspectingNode",
+                                        null, {node});
 
     // Make sure the inspector/waler/highlighter actors are ready
     yield this.toolbox.initInspector();
