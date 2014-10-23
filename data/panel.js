@@ -4,6 +4,7 @@ const {Cu} = require("chrome");
 const self = require("sdk/self");
 const {on, off, emit} = require("sdk/event/core");
 const {Task} = Cu.import("resource://gre/modules/Task.jsm", {});
+const {React} = require("./react-0.11.2.js");
 
 const FRAME_SCRIPT_URL = self.data.url("recorder-frame-script.js");
 
@@ -136,6 +137,17 @@ RecorderPanel.prototype = {
       } else {
         el.style.display = "none";
       }
+    }
+  },
+
+  displaySession({records}) {
+    if (!this.controller.isStarted) {
+      return;
+    }
+
+    this.recordsEl.innerHTML = "";
+    for (let record of records) {
+      this.onRecord(record);
     }
   },
 
@@ -307,3 +319,77 @@ RecorderPanel.prototype = {
     return timeEl;
   }
 };
+
+/* React UI components */
+
+// The whole records list
+let RecordsListComponent = React.createClass({
+  renderHeaderRow() {
+    let record = this.props.records[0];
+    let cols = Object.keys(record).map(col => React.DOM.td(null, col));
+    return React.DOM.tr(null, cols);
+  },
+
+  renderRows() {
+    return this.props.records.map(record => RecordComponent(record));
+  },
+  
+  render() {
+    return (
+      React.DOM.table(null,
+        React.DOM.thead(null, this.renderHeaderRow()),
+        React.DOM.tbody(null, this.renderRows())
+      )
+    );
+  }
+});
+
+// A single row
+let RecordComponent = React.createClass({
+  formatTime() {
+    return (Math.round(this.props.time / 1000 * 100) / 100) + " sec";
+  },
+
+  render() {
+    let cells = [];
+
+    // Time column
+    cells.push(React.DOM.span({"class": "time"}, this.formatTime()));
+
+    // Target column
+    // XXX how is 'target' to the component? Also need the panel instance to
+    // highlight and select
+    cells.push(RecordTargetComponent(this.props.target));
+
+    return React.DOM.tr(null, cells);
+  }
+});
+
+// A DOM node target
+let RecordTargetComponent = React.createClass({
+  render() {
+    let nodes = [];
+
+    // Open tag + tagname
+    nodes.push(React.DOM.span({"class": "target-tag"},
+                              "<" + this.props.localName));
+    // ID
+    if (this.props.id) {
+      nodes.push(React.DOM.span({"class": "target-id"},
+                                "#" + this.props.id));
+    }
+    // classes
+    if (this.props.classList.length) {
+      nodes.push(React.DOM.span({"class": "target-classes"},
+                                [...this.props.classList].join(".")));
+    }
+    // Close tag
+    nodes.push(React.DOM.span({"class": "target-tag"}, ">"));
+
+    return React.DOM.span({"class": "target"}, nodes);
+  }
+});
+
+// React.renderComponent(RecordsListComponent({
+//     records: [{id: 1, name: "test"}, {id: 2, name: "test 2"}]
+// }), document.body);

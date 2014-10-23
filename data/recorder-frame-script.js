@@ -55,7 +55,7 @@ PageChangeRecorder.prototype = {
       }
     }
   },
-  
+
   stop() {
     if (!this.isStarted) {
       return;
@@ -71,7 +71,7 @@ PageChangeRecorder.prototype = {
     this.addedListenerTypes = null;
     this._mutationObserver.disconnect();
   },
-  
+
   _getListeners() {
     // Get the list of all event types that have listeners in content
     let nodes = this.doc.getElementsByTagName("*");
