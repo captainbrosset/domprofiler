@@ -140,6 +140,11 @@ RecorderPanel.prototype = {
   },
 
   onRecord({data: record, objects: target}) {
+    let el = this.recordsEl;
+
+    let hasScroll = el.offsetHeight < el.scrollHeight;
+    let isScrolledDown = el.scrollTop + el.offsetHeight >= el.scrollHeight;
+
     let li = this.doc.createElement("li");
     li.classList.add("record");
     li.classList.add(record.type);
@@ -179,9 +184,12 @@ RecorderPanel.prototype = {
       li.style.display = "none";
     }
 
-    this.recordsEl.appendChild(li);
+    el.appendChild(li);
 
-    this.recordsEl.scrollTop = this.recordsEl.scrollHeight;
+    // Auto-scroll to bottom if the user hasn't scrolled up
+    if (!hasScroll || isScrolledDown) {
+      el.scrollTop = el.scrollHeight;
+    }
   },
 
   getNodeFront: Task.async(function*(node) {
