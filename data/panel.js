@@ -265,7 +265,8 @@ RecorderPanel.prototype = {
 
   buildRecordOutputFor_event({parentEl, data, time}) {
     let outputEl = this.doc.createElement("span");
-    outputEl.textContent = "Event " + data.type;
+    outputEl.innerHTML = "Event <span class='event-name'>" + data.type +
+                         "</span> handled";
     parentEl.appendChild(outputEl);
   },
 

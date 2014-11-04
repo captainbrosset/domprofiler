@@ -93,6 +93,8 @@ body {
   padding: 5px 3px;
   margin: 0;
   list-style-type: none;
+
+  overflow: auto;
 }
 
 .record:hover {
@@ -101,17 +103,25 @@ body {
   color: white;
 }
 
-.record.event:not(:hover) {
+.event-name {
   color: orange;
+  font-weight: bold;
+}
+
+.record:hover .event-name {
+  color: white;
 }
 
 .target {
   float: right;
+  cursor: pointer;
 }
 
 .time {
-  color: #999;
+  color: #666;
   margin-right: 5px;
+  float: left;
+  width: 5%;
 }
 
 .target-tag {

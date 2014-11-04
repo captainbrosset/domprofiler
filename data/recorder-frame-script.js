@@ -50,8 +50,13 @@ PageChangeRecorder.prototype = {
       // Add one system-group event listener per default event type found
       // so we can be called whenever one happens even if the handler prevents
       // propagation.
-      for (let {type} of listeners) {
-        els.addSystemEventListener(node, type, this._onEvent, true);
+      for (let listener of listeners) {
+        let {type, listenerObject} = listener.listener;
+        let onEvent = e => {
+          this._onEvent(e.type, e.target, listenerObject + "");
+        };
+        els.addSystemEventListener(node, type, onEvent, true);
+        listener.cb = onEvent;
       }
     }
   },
@@ -64,8 +69,8 @@ PageChangeRecorder.prototype = {
     this.isStarted = false;
 
     for (let [node, listeners] of this.addedListeners) {
-      for (let {type} of listeners) {
-        els.removeSystemEventListener(node, type, this._onEvent, true);
+      for (let {cb, listener} of listeners) {
+        els.removeSystemEventListener(node, listeber.type, cb, true);
       }
     }
     this.addedListenerTypes = null;
@@ -82,7 +87,10 @@ PageChangeRecorder.prototype = {
         if (!nodeEventListeners.has(node)) {
           nodeEventListeners.set(node, []);
         }
-        nodeEventListeners.get(node).push(listener);
+        nodeEventListeners.get(node).push({
+          listener: listener,
+          cb: null
+        });
       }
     }
     return nodeEventListeners;
@@ -118,8 +126,8 @@ PageChangeRecorder.prototype = {
     }
   },
 
-  _onEvent({type, target}) {
-    this._emitChange("event", {type, target});
+  _onEvent(type, target, functionDeclaration) {
+    this._emitChange("event", {type, target, functionDeclaration});
   },
 
   _emitChange(type, data) {
