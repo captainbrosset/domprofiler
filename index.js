@@ -6,12 +6,12 @@ const {RecorderPanel} = require("data/panel");
 const {gDevTools} = Cu.import("resource:///modules/devtools/gDevTools.jsm", {});
 
 gDevTools.registerTool({
-  id: "pagerecorder",
+  id: "domprofiler",
   icon: self.data.url("images/icon.svg"),
   invertIconForLightTheme: true,
   url: self.data.url("panel.html"),
-  label: "Page Recorder",
-  tooltip: "Record mutations and events on the page",
+  label: "DOM Profiler",
+  tooltip: "Record DOM mutations and events on the page",
 
   isTargetSupported(target) {
     return target.isLocalTab;

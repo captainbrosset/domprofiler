@@ -16,6 +16,6 @@ Note that this addon will only work when using the devtools in a local browser t
 ## How to build and run
 
 * [install JPM](https://www.npmjs.org/package/jpm)
-* `git clone https://github.com/captainbrosset/pagerecorder`
-* `cd pagerecorder`
+* `git clone https://github.com/captainbrosset/domprofiler`
+* `cd domprofiler`
 * `jpm run -b /path/to/firefox/nightly/bin`
