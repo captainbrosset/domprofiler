@@ -1,14 +1,10 @@
-# Page Recorder FirefoxDevTools add-on
-
-pagerecorder is a really bad name but naming things is hard.
+# DOM Profiler FirefoxDevTools add-on
 
 This is a Firefox DevTools add-on that records changes on the current page.
 
-Start it and it will record DOM mutations and events, plus it will remember the state of the page and the target node for each change.
+Once started, it records DOM mutations and DOM events, and list them live as you interact with the page.
 
-Stop it and it will list those changes in the toolbox so that you can mouseover them and see what happened in the page while it was being recorded.
-
-Here's a short demo video: https://www.youtube.com/watch?v=y6JSoddYQKg&feature=youtu.be
+Mutations and event target elements are recorded too and can be highlighted and selected in the inspector.
 
 ## How to install
 

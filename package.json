@@ -1,8 +1,8 @@
 {
-  "title": "Page Recorder",
-  "name": "pagerecorder",
+  "title": "DOM Profiler",
+  "name": "domprofiler",
   "version": "0.0.1",
-  "description": "Devtools addon that records dom mutations and event handlings on the page",
+  "description": "A FirefoxDevTools extension that records DOM mutations and DOM event handlings on the page",
   "main": "index.js",
   "author": "Patrick Brosset",
   "engines": {
