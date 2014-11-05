@@ -8,7 +8,7 @@ const {on, off, emit} = devtools.require("sdk/event/core");
 
 /**
  * The page change recorder util itself. Doesn't care about UI, just starts and
- * stops a recording an emits records as it goes.
+ * stops a recording and emits records as it goes.
  */
 function PageChangeRecorder(doc) {
   this.doc = doc;
@@ -70,7 +70,7 @@ PageChangeRecorder.prototype = {
 
     for (let [node, listeners] of this.addedListeners) {
       for (let {cb, listener} of listeners) {
-        els.removeSystemEventListener(node, listeber.type, cb, true);
+        els.removeSystemEventListener(node, listener.type, cb, true);
       }
     }
     this.addedListenerTypes = null;
