@@ -139,8 +139,9 @@ RecorderPanel.prototype = {
     }
   },
 
-  onRecord({data: record, objects: target}) {
+  onRecord({data: record, objects}) {
     let el = this.recordsEl;
+    let target = objects.target;
 
     let hasScroll = el.offsetHeight < el.scrollHeight;
     let isScrolledDown = el.scrollTop + el.offsetHeight >= el.scrollHeight;
@@ -291,7 +292,7 @@ RecorderPanel.prototype = {
       idEl.textContent = "#" + target.id;
       targetEl.appendChild(idEl);
     }
-    if (target.classList.length) {
+    if (target.classList && target.classList.length) {
       let classesEl = this.doc.createElement("span");
       classesEl.classList.add("target-classes");
       classesEl.textContent = "." + [...target.classList].join(".");

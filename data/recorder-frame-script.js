@@ -149,9 +149,11 @@ function onChange({type, data, time, id}) {
   }
 
   // We need to send DOM nodes separately so they become CPOWs
-  let object = data.target;
+  let objects = {
+    target: data.target
+  };
   delete data.target;
-  sendAsyncMessage("PageRecorder:OnChange", {type, data, time, id}, object);
+  sendAsyncMessage("PageRecorder:OnChange", {type, data, time, id}, objects);
 }
 
 addMessageListener("PageRecorder:Start", function() {
