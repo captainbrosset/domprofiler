@@ -8,10 +8,9 @@ Mutations and event target elements are recorded too and can be highlighted and 
 
 ## How to install
 
-Install the addon from AMO: https://addons.mozilla.org/en-US/firefox/addon/dom-profiler/
-(or use the XPI in this repository).
+The addon isn't yet on addons.mozilla.org so you'll need to insall it by drag'n'dropping the XPI in this repository to your browser.
 
-Note that this addon will only work when using the devtools in a local browser tab, not when debugging a remote device (via the WebIDE).
+Note that this addon will only work when using the devtools in a local browser tab, not when debugging a remote device (via the WebIDE). At least until issue #10 is fixed.
 
 ## How to build and run
 
