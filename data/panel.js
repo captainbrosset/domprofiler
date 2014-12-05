@@ -20,32 +20,16 @@ function RecorderController(toolbox) {
   this.onRecord = this.onRecord.bind(this);
   this.mm.addMessageListener("PageRecorder:OnChange", this.onRecord);
 
-  this.sessions = [];
+  this.records = [];
 }
 
 RecorderController.prototype = {
-  createNewSession() {
-    this.sessions.push({
-      time: Date.now(),
-      records: [],
-      duration: null
-    });
-  },
-
-  get lastSession() {
-    return this.sessions[this.sessions.length - 1];
-  },
-
   start() {
     if (this.isStarted) {
       return;
     }
     this.isStarted = true;
-
-    this.createNewSession();
     this.mm.sendAsyncMessage("PageRecorder:Start");
-
-    return this.lastSession;
   },
 
   stop() {
@@ -53,19 +37,14 @@ RecorderController.prototype = {
       return;
     }
     this.isStarted = false;
-
     this.mm.sendAsyncMessage("PageRecorder:Stop");
-    this.lastSession.duration = Date.now() - this.lastSession.time;
-
-    return this.lastSession;
   },
 
   onRecord(msg) {
     if (!this.isStarted) {
       return;
     }
-
-    this.lastSession.records.push(msg);
+    this.records.push(msg);
     emit(this, "record", msg);
   }
 };
@@ -149,6 +128,15 @@ RecorderPanel.prototype = {
     let li = this.doc.createElement("li");
     li.classList.add("record");
     li.classList.add(record.type);
+
+    // For test
+    li.addEventListener("click", () => {
+      if (this.controller.isStarted) {
+        return;
+      }
+      let index = [...li.parentNode.children].indexOf(li);
+      this.controller.mm.sendAsyncMessage("PageRecorder:Move", {index});
+    });
 
     li.appendChild(this.buildTimeOutput(record.time));
 

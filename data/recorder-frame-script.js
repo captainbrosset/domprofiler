@@ -17,6 +17,9 @@ function PageChangeRecorder(doc) {
 
   this.id = 0;
 
+  this.records = [];
+  this.currentIndex = -1;
+
   this._onMutations = this._onMutations.bind(this);
   this._onEvent = this._onEvent.bind(this);
 
@@ -26,7 +29,7 @@ function PageChangeRecorder(doc) {
 
 PageChangeRecorder.prototype = {
   destroy() {
-    this.doc = this.win = this._mutationObserver = null;
+    this.doc = this.win = this._mutationObserver = this.records = null;
   },
 
   start() {
@@ -35,6 +38,7 @@ PageChangeRecorder.prototype = {
     }
     this.isStarted = true;
     this.startTime = this.win.performance.now();
+    this.currentIndex = -1;
 
     // Start observing markup mutations
     this._mutationObserver.observe(this.doc, {
@@ -75,6 +79,8 @@ PageChangeRecorder.prototype = {
     }
     this.addedListenerTypes = null;
     this._mutationObserver.disconnect();
+
+    this.currentIndex = this.records.length - 1;
   },
   
   _getListeners() {
@@ -133,8 +139,36 @@ PageChangeRecorder.prototype = {
   _emitChange(type, data) {
     let time = this.win.performance.now();
     time -= this.startTime;
-    emit(this, "change", {type, data, time, id: this.id++});
+
+    let record = {type, data, time, id: this.id++};
+    this.records.push(record);
+    emit(this, "change", record);
   },
+
+  moveTo(index) {
+    if (!this.records.length ||
+        !this.records[this.currentIndex] ||
+        !this.records[index]) {
+      throw new Error("Cannot moved from index " + this.currentIndex + " to index " + index);
+      return;
+    }
+
+    let isReverse = this.currentIndex > index;
+    for (let i = 0; i < Math.abs(index - this.currentIndex); i ++) {
+      let recordIndex = isReverse ? this.currentIndex - i : this.currentIndex + i;
+      let {type, data} = this.records[recordIndex];
+
+      // Only replay mutations
+      if (type !== "mutation") {
+        continue;
+      }
+
+      if (data.type === "attributes") {
+        data.target.setAttribute(data.reason.name,
+          isReverse ? data.reason.oldValue : data.reason.value);
+      }
+    }
+  }
 };
 
 let currentRecorder;
@@ -152,7 +186,7 @@ function onChange({type, data, time, id}) {
   let objects = {
     target: data.target
   };
-  delete data.target;
+  // delete data.target;
   sendAsyncMessage("PageRecorder:OnChange", {type, data, time, id}, objects);
 }
 
@@ -179,4 +213,13 @@ addMessageListener("PageRecorder:Stop", function() {
 addMessageListener("PageRecorder:SetInspectingNode", function({objects}) {
   let inspector = devtools.require("devtools/server/actors/inspector");
   inspector.setInspectingNode(objects.node);
+});
+
+addMessageListener("PageRecorder:Move", function({data}) {
+  if (!currentRecorder || isRecording()) {
+    throw new Error("Cannot move to a record index while recording");
+    return;
+  }
+
+  currentRecorder.moveTo(data.index);
 });
